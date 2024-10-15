@@ -15,12 +15,19 @@ void B3TS::get_KF(double K[6][6], double F[6]){
     double bend_cof = mat->E * sec_prop->I / len / 3;
     double sheer_cof =  mat->G * sec_prop->A / len / sec_prop->k / 30;
 
-    double Ks_val[6][6] = {{70,     15*len,   -80,      20*len,   10,       -5*len},
-                           {15*len, 4*len2,   -20*len,  2*len2,   5*len,    -len2},
-                           {-80,    -20*len,  160,      0,        -80,      20*len},
-                           {20*len, 2*len2,   0,        16*len2,  -20*len,  2*len2},
-                           {10,     5*len,    -80,      -20*len,  70,       -15*len},
-                           {-5*len, -len2,    20*len,   2*len2,   -15*len,  4*len2}};
+    double Ksf_val[6][6] = {{70,     15*len,   -80,      20*len,   10,       -5*len},
+                            {15*len, 4*len2,   -20*len,  2*len2,   5*len,    -len2},
+                            {-80,    -20*len,  160,      0,        -80,      20*len},
+                            {20*len, 2*len2,   0,        16*len2,  -20*len,  2*len2},
+                            {10,     5*len,    -80,      -20*len,  70,       -15*len},
+                            {-5*len, -len2,    20*len,   2*len2,   -15*len,  4*len2}};
+    
+    double Ksr_val[6][6] = {{70,     15*len,     -80,      20*len,     10,       -5*len},
+                           {15*len, 10*len2/3,  -20*len,  10*len2/3,  5*len,    -5*len2/3},
+                           {-80,    -20*len,    160,      0,          -80,      20*len},
+                           {20*len, 10*len2/3,  0,        40*len2/3,  -20*len,  10*len2/3},
+                           {10,     5*len,      -80,      -20*len,    70,       -15*len},
+                           {-5*len, -5*len2/3,  20*len,   10*len2/3,  -15*len,  10*len2/3}};
 
     double Kb_val[6][6] = {{0,  0 ,  0,  0,  0,  0},
                            {0,  7 ,  0,  -8, 0,  1},
@@ -45,12 +52,23 @@ void B3TS::get_KF(double K[6][6], double F[6]){
         Pq[5] += itM->first * (xi + 1) * xi / 2;
     }
 
-    for(int i = 0; i < 6; i++){
-        for(int j = 0; j < 6; j++){
-            K[i][j] = Kb_val[i][j] * bend_cof + Ks_val[i][j] * sheer_cof;
+    if(int_method == 0){
+        for(int i = 0; i < 6; i++){
+            for(int j = 0; j < 6; j++){
+                K[i][j] = Kb_val[i][j] * bend_cof + Ksf_val[i][j] * sheer_cof;
+            }
+            F[i] = Pq[i];
         }
-        F[i] = Pq[i];
     }
+    else{
+        for(int i = 0; i < 6; i++){
+            for(int j = 0; j < 6; j++){
+                K[i][j] = Kb_val[i][j] * bend_cof + Ksr_val[i][j] * sheer_cof;
+            }
+            F[i] = Pq[i];
+        }
+    }
+
 };
 
 void B3TS::asb_KF(double* K, double* F, const std::vector<std::pair<int, int>> &sont){

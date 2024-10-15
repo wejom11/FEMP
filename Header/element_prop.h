@@ -9,10 +9,10 @@ public:
     double G;       // sheer modulus
     double nu;      // Poission ratio
 
-    material(double Ev = 3E11, double Gv = 3E11/2.6, double nuv = 0.3){
+    material(double Ev = 2.1E7, double nuv = 0.30){
         E = Ev;
-        G = Gv;
         nu = nuv;
+        G = E / (1 + nu) / 2;
     };
 
     ~material(){};
@@ -50,5 +50,17 @@ public:
     ~beam_bnd(){};
 };
 
+class plate_prop{
+public:
+    double thickness;
+    double k_eqv;
+
+    plate_prop(double t = 0.01, double k = 1.2){
+        thickness = t;
+        k_eqv = k;
+    };
+
+    ~plate_prop(){};
+};
 
 #endif

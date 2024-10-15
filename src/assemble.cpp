@@ -2,95 +2,46 @@
 
 void asb_manager::init_mesh(int num, bool M, int type, double len, double val){
     Linemesh_demo lmd(num, len, val, M, type);
-    lmd.generate(eles, mater_lib, section_lib, dbd, xyz_coord);
+    lmd.generate(eles, mater_lib, section_lib, bnds, xyz_coord);
 }
 
+void asb_manager::init_mesh(int num, int type, double len, double val){
+    Square_Platemesh_demo spmd(num, len, val, type);
+    spmd.generate(eles, mater_lib, plate_prop_lib, bnds, xyz_coord);
+};
+
 void asb_manager::init_KF(){
-    const std::vector<int> s_o_et = eles.sot();
-    const std::vector<std::pair<int, int>> s_o_nt = eles.sont();
-
-    int sot_size = s_o_et.size();
-    int sont_size = s_o_nt.size();
-    int i = 0, j = 0;
-    int dof = 0;
-    for(i = 0; i < sont_size; i++){
-        dof += s_o_nt.at(i).first * s_o_nt.at(i).second;
+    if(!_strcmpi(method.data(), "D")){
+        KF.init_KFD(eles);
     }
-
-    K.resize(dof, dof);
-    Fout = new double[dof]{0.};
-
-    for(i = 0; i < sot_size; i++){
-        if(s_o_et.at(i) == 0){
-            continue;
-        }
-
-        if(i == 0){
-            B2TS ele_empty;
-            std::vector<B2TS>* eles_ref = eles.eleset_ptr(ele_empty);
-
-            for(std::vector<B2TS>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KF(K.val, Fout, s_o_nt);
-            }
-        }
-        else if(i == 1){
-            B2TSR ele_empty;
-            std::vector<B2TSR>* eles_ref = eles.eleset_ptr(ele_empty);
-
-            for(std::vector<B2TSR>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KF(K.val, Fout, s_o_nt);
-            }
-        }
-        else if(i == 2){
-            B3TS ele_empty;
-            std::vector<B3TS>* eles_ref = eles.eleset_ptr(ele_empty);
-
-            for(std::vector<B3TS>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KF(K.val, Fout, s_o_nt);
-            }
-        }
-        else if(i == 3){
-            B3TSR ele_empty;
-            std::vector<B3TSR>* eles_ref = eles.eleset_ptr(ele_empty);
-
-            for(std::vector<B3TSR>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KF(K.val, Fout, s_o_nt);
-            }
-        }
-        else{
-            printf("no such element type %i\n", i);
-        }
+    else if(!_strcmpi(method.data(), "S")){
+        KF.init_KFS(eles);
     }
 };
 
 void asb_manager::add_bnd(){
-    const std::vector<std::pair<int,int>> sont = eles.sont();
-    int ntype_num = sont.size();
-    std::vector<int> noet(ntype_num + 1, 1);
-    std::vector<int> dofoet(ntype_num + 1, 0);
-    for(int i = 0; i < ntype_num; i++){
-        noet.at(i + 1) = noet.at(i) + sont.at(i).first;
-        dofoet.at(i + 1) = dofoet.at(i) + sont.at(i).second * sont.at(i).first;
+    if(!_strcmpi(method.data(), "D")){
+        bnds.add_bndD(KF.K_dense, KF.Fout, eles);
     }
-
-    int where_nd, row;
-    int dof = dofoet.back();
-    for(std::vector<int>::iterator itbd = dbd.Anchorage_nid.begin(); itbd != dbd.Anchorage_nid.end(); itbd++){
-        where_nd = find(*itbd, noet);
-        row = dofoet.at(where_nd) + sont.at(where_nd).second * (*itbd - noet.at(where_nd));
-
-        for(int i = 0; i < sont.at(where_nd).second; i++){
-            K.val[(row + i)*dof + row + i] = 1E10;
-            Fout[row + i] = 0;
-        }
+    else if(!_strcmpi(method.data(), "S")){
+        bnds.add_bndS(KF.K_sparse, KF.Fout, eles);
     }
 }
 
 void asb_manager::solve(){
-    int* ipiv = new int[K.rows]{0};
+    if(!_strcmpi(method.data(), "D")){
+        this->solveD();
+    }
+    else if(!_strcmpi(method.data(), "S")){
+        this->solveS();
+    }
+};
+
+void asb_manager::solveD(){
+    int* ipiv = new int[KF.K_dense.rows]{0};
     int info;
 
-    info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, K.rows, 1, K.val, K.rows, ipiv, Fout, 1);
+    info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, KF.K_dense.rows, 1, KF.K_dense.val, KF.K_dense.rows, ipiv, KF.Fout, 1);
 
     if(info != 0){
         printf("ERROR: solving process error!\n");
@@ -99,3 +50,43 @@ void asb_manager::solve(){
 
     delete[] ipiv; ipiv = nullptr;
 }
+
+void asb_manager::solveS(){
+    const int dof = KF.K_sparse.rows;
+    int mtype = KF.K_sparse.type;
+    int nrhs = 1;
+    Var = new double[dof] {0};
+    void* ptsolver[64];
+    pardiso_cfg para = pardiso_cfg(mtype);
+    double ddum;
+
+    for(int i = 0; i < 64; i++){
+        ptsolver[i] = 0; 
+    }
+
+    int phase = 11;
+    pardiso(ptsolver, &(para.maxfct), &(para.mnum), &(KF.K_sparse.type), &phase, &dof, KF.K_sparse.val, 
+            KF.K_sparse.row_st, KF.K_sparse.col, &(para.perm), &nrhs, para.iparm, &(para.msglvl), &ddum, &ddum, &(para.error));
+    if(para.error != 0 ){
+        printf ("ERROR during symbolic factorization: %i \n", para.error);
+    }
+    
+    phase = 22;
+    pardiso(ptsolver, &(para.maxfct), &(para.mnum), &(KF.K_sparse.type), &phase, &dof, KF.K_sparse.val, 
+            KF.K_sparse.row_st, KF.K_sparse.col, &(para.perm), &nrhs, para.iparm, &(para.msglvl), &ddum, &ddum, &(para.error));
+    if(para.error != 0 ){
+        printf ("ERROR during numerical factorization: %i \n", para.error);
+    }
+
+    phase = 33;
+    pardiso(ptsolver, &(para.maxfct), &(para.mnum), &(KF.K_sparse.type), &phase, &dof, KF.K_sparse.val, 
+            KF.K_sparse.row_st, KF.K_sparse.col, &(para.perm), &nrhs, para.iparm, &(para.msglvl), KF.Fout, Var, &(para.error));
+    if(para.error != 0 ){
+        printf ("ERROR during solution: %i \n", para.error);
+    }
+    printf("solve completed ...\n");
+
+    phase = -11;
+    pardiso(ptsolver, &(para.maxfct), &(para.mnum), &(KF.K_sparse.type), &phase, &dof, KF.K_sparse.val, 
+            KF.K_sparse.row_st, KF.K_sparse.col, &(para.perm), &nrhs, para.iparm, &(para.msglvl), KF.Fout, &ddum, &(para.error));
+};

@@ -10,7 +10,8 @@ void SparseMatrix::show(int row){
         for(j = this->row_st[i]-1; j < this->row_st[i+1]-1; j++){
             tiscol = this->col[j];
             for(k = lstcol; k < tiscol; k++){
-                printf("%.2f, ", 0.);
+                //printf("%.2f, ", 0.);
+                printf("... ");
             }
             if(tiscol == row){
                 printf("%.8f},", this->val[j]);
@@ -23,13 +24,16 @@ void SparseMatrix::show(int row){
 
         for(k = lstcol - 1; k < row; k++){
             if(k == row - 1){
-                printf("%.2f}, ",0.);
+                //printf("%.2f}, ",0.);
+                printf("...}");
             }
             else{
-                printf("%.2f, ",0.);
+                //printf("%.2f, ",0.);
+                printf("... ");
             }
         }
     }
+    printf("\n");
 };
 
 void pardiso_cfg::initial(int &type){
@@ -139,5 +143,53 @@ int find(int &ele, std::vector<int> &array){
         }
     }
 
+    return -1;
+};
+
+double det(const DenseMatrix &M){
+    double* mat  = M.val;
+    if(M.rows == 2){
+        return mat[0]*mat[3] - mat[1]*mat[2];
+    }
+    else if(M.rows == 3){
+        double d = mat[0]*mat[4]*mat[8] + mat[3]*mat[7]*mat[2] + mat[6]*mat[1]*mat[5] -
+                   mat[2]*mat[4]*mat[6] - mat[0]*mat[5]*mat[7] - mat[8]*mat[1]*mat[3];
+        return d;
+    }
+    return 0;
+};
+
+int match(const int row, const int col,  SparseMatrix &SPM){
+    int start = SPM.row_st[row-1] - 1;
+    int end = SPM.row_st[row] - 1;
+    int mid = (start + end) / 2;
+    int ptr = mid;
+    bool is_done = false;
+
+    while(!is_done){
+        if(SPM.col[ptr] < col){
+            start = mid;
+            mid = (start + end) / 2;
+            if(mid == ptr){
+                is_done = true;
+            }else{
+                ptr = mid;
+            }
+        }
+        else if(SPM.col[ptr] > col){
+            end = mid;
+            mid = (start + end) / 2;
+            if(mid == ptr){
+                is_done = true;
+            }
+            else{
+                ptr = mid;
+            }
+        }
+        else{
+            return ptr;
+        }
+    }
+    
     return -1;
 };

@@ -7,6 +7,7 @@
 class SparseMatrix{
 public:
     int type;
+    int rows;
     double* val;
     int* col;
     int* row_st;
@@ -110,5 +111,17 @@ int wherend(int n_id, std::vector<std::pair<int, int>> &sont);
 /// @return position
 // template <class TYPE>
 int find(int &ele, std::vector<int> &array);
+
+/// @brief get matrix M's determinate
+/// @param M input Matrix
+/// @return determinate
+double det(const DenseMatrix &M);
+
+/// @brief find (i,j) Matrix element's position in Sparse Matrix storage format 'val' array
+/// @param row the i-th row dimension
+/// @param col the j-th col dimension
+/// @attention the row/col number and SparseMatrix is one-based indexing;
+/// @return the position where this element stored in SparseMatrix.val Array.
+int match(const int row, const int col,  SparseMatrix &SPM);
 
 #endif

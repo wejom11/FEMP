@@ -3,11 +3,7 @@
 
 #include <stdio.h>
 #include "elements.h"
-
-class disp_bnd{
-public:
-    std::vector<int> Anchorage_nid;
-};
+#include "boundaries.h"
 
 class Linemesh_demo{
 private:
@@ -26,10 +22,29 @@ public:
     };
 
     void generate(elements &eles, std::vector<material> &matlib, std::vector<section_TSbeam> &seclib, 
-                  disp_bnd &dbnd, double* xyz);
+                  boundaries &dbnd, double* &xyz);
 
     ~Linemesh_demo(){};
 };
 
+class Square_Platemesh_demo{
+private:
+    int line_ele_num;
+    double length;
+    double p_val;
+    int type;
+
+public:
+    Square_Platemesh_demo(int num = 2, double len = 1, double pval = 1.0, int tp = 0){
+        line_ele_num = num;
+        length = len;
+        p_val = pval;
+        type = tp;
+    }
+
+    void generate(elements &eles, std::vector<material> &matlib, std::vector<plate_prop> &seclib, 
+                  boundaries &dbnd, double* &xyz);
+
+};
 
 #endif

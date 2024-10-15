@@ -10,15 +10,15 @@ int main(){
 
     printf("Please select element type: \n\
 (0 - 2-node Timoshenko beam element; \n\
- 1 - 2-node Timoshenko beam element with reduced integrate; \n\
+ 1 - 2-node Timoshenko beam element with reduced integration; \n\
  2 - 3-ndoe Timoshenko beam element; \n\
- 3 - 2-node Timoshenko beam element with reduced integrate)\n");
+ 3 - 2-node Timoshenko beam element with reduced integration)\n");
     std::cin >> eletype;
 
     printf("Please input element number: \n");
     std::cin >> elenum;
 
-    printf("Please select loading conditions: \n\
+    printf("Please select load conditions: \n\
 (1 - bending moment; \n\
  0 - sheering force)\n");
     std::cin >> isM;
@@ -27,7 +27,7 @@ int main(){
         std::cerr << "ERROR: element type " << eletype << " is not supported!";
         exit(0);
     }
-    asb.init_mesh(elenum, isM, eletype);
+    asb.init_mesh(elenum, isM, eletype, 1.0, 2.5);
     double start = clock();
     asb.init_KF();
 
@@ -42,18 +42,20 @@ int main(){
     // }
     // Kw.show();
     asb.add_bnd();
-    asb.solve();
+    asb.solveD();
 
     if(eletype == 1 || eletype == 0){
         for(int i = 0; i < 2*(elenum+1); i++){
-            printf("%.8f\n", asb.Fout[i]);
+            printf("%.8f\n", asb.KF.Fout[i]);
         }
     }
     else{
         for(int i = 0; i < 2*(2*elenum+1); i++){
-            printf("%.8f\n", asb.Fout[i]);
+            printf("%.8f\n", asb.KF.Fout[i]);
         }
     }
+
+    printf("%.4f\n", asb.xyz_coord[3]);
 
     double end = clock();
     printf("time: %.4f\n", end - start);

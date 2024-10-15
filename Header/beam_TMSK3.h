@@ -8,15 +8,17 @@
 
 class B3TS{
 public:
+    int int_method; 
     std::vector<int> node_id;
     material* mat;
     section_TSbeam* sec_prop;
     std::vector<double*> xyz;
     beam_bnd bnd;
 
-    B3TS(material* mater = nullptr, section_TSbeam* sec = nullptr){
+    B3TS(int method = 0, material* mater = nullptr, section_TSbeam* sec = nullptr){
         mat = mater;
         sec_prop = sec;
+        int_method = method;
     };
 
     /// @brief set the boundary information

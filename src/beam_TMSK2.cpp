@@ -15,10 +15,16 @@ void B2TS::get_KF(double K[4][4], double F[4]){
     double bend_cof = mat->E * sec_prop->I / len;
     double sheer_cof =  mat->G * sec_prop->A / len / sec_prop->k;
 
-    double Ks_val[4][4] = {{1,          0.5*len,    -1,         0.5*len},
-                          {0.5*len,     len2/3,     -0.5*len,   len2/6},
-                          {-1,          -0.5*len,   1,          -0.5*len},
-                          {0.5*len,     len2/6,     -0.5*len,   len2/3}};
+    double Ksf_val[4][4] = {{1,          0.5*len,    -1,         0.5*len},
+                           {0.5*len,     len2/3,     -0.5*len,   len2/6},
+                           {-1,          -0.5*len,   1,          -0.5*len},
+                           {0.5*len,     len2/6,     -0.5*len,   len2/3}};
+
+    
+    double Ksr_val[4][4] = {{1,          0.5*len,    -1,         0.5*len},
+                            {0.5*len,     len2/4,     -0.5*len,   len2/4},
+                            {-1,          -0.5*len,   1,          -0.5*len},
+                            {0.5*len,     len2/4,     -0.5*len,   len2/4}};
 
     double Kb_val[4][4] = {{0,  0 ,  0,  0},
                            {0,  1 ,  0,  -1},
@@ -37,12 +43,23 @@ void B2TS::get_KF(double K[4][4], double F[4]){
         Pq[3] += itM->first * (1 + itM->second) / 2;
     }
 
-    for(int i = 0; i < 4; i++){
-        for(int j = 0; j < 4; j++){
-            K[i][j] = Kb_val[i][j] * bend_cof + Ks_val[i][j] * sheer_cof;
+    if(int_method == 0){
+        for(int i = 0; i < 4; i++){
+            for(int j = 0; j < 4; j++){
+                K[i][j] = Kb_val[i][j] * bend_cof + Ksf_val[i][j] * sheer_cof;
+            }
+            F[i] = Pq[i];
         }
-        F[i] = Pq[i];
     }
+    else{
+        for(int i = 0; i < 4; i++){
+            for(int j = 0; j < 4; j++){
+                K[i][j] = Kb_val[i][j] * bend_cof + Ksr_val[i][j] * sheer_cof;
+            }
+            F[i] = Pq[i];
+        }
+    }
+
 };
 
 void B2TS::asb_KF(double* K, double* F, const std::vector<std::pair<int, int>> &sont){

@@ -9,6 +9,7 @@
 /// @brief Temoshenko beam element with 2 nodes
 class B2TS{
 public:
+    int int_method;             // 0-Full integration; 1-reduced integration
     std::vector<int> node_id;
     material* mat;
     section_TSbeam* sec_prop;
@@ -17,9 +18,10 @@ public:
 
 // public:
 
-    B2TS(material* mater = nullptr, section_TSbeam* sec = nullptr){
+    B2TS(int method = 0, material* mater = nullptr, section_TSbeam* sec = nullptr){
         mat = mater;
         sec_prop = sec;
+        int_method = method;
     };
 
     /// @brief set the boundary information
