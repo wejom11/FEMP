@@ -230,7 +230,7 @@ void show(std::vector<int>& vec, std::vector<int>& opt_vec){
 };
 
 bool read_cfg(int** paras){
-    std::ifstream cfg_fio("../nl_demo.cfg");
+    std::ifstream cfg_fio("../../nl_demo.cfg");
     std::string wkstr;
     std::string wkwd;
     std::string wd_front, wd_back;
@@ -498,7 +498,7 @@ Do you want set these parameters in cmdline?(\033[32mY\033[0m/\033[31mn\033[0m)\
                 }
             }
 
-            printf("Please configure [\033[36m%s\033[0m]:\n", para_names.at(non_cfg_list.front()).data());
+            if(non_cfg_list.size() > 0) printf("Please configure [\033[36m%s\033[0m]:\n", para_names.at(non_cfg_list.front()).data());
         }
     }
 
