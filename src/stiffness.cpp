@@ -43,13 +43,22 @@ void stiffness::init_KFD(elements& eles){
 };
 
 void stiffness::init_KFS(elements& eles){
-    this->init_K_symbolic(eles);
+    if(!K_sparse.val){
+        this->init_K_symbolic(eles);
+        Fout = new double[K_sparse.rows]{0.};
+    }
+    else{
+        for(int i = 0; i < K_sparse.row_st[K_sparse.rows] - 1; i++){
+            K_sparse.val[i] = 0.;
+        }
+        
+        for(int i = 0; i < K_sparse.rows; i++){
+            Fout[i] = 0.;
+        }
+    }  
 
     const std::vector<std::pair<int,int>> s_o_nt = eles.sont();
     const std::vector<int> s_o_t = eles.sot();
-
-    Fout = new double[K_sparse.rows]{0.};
-
     int i;
     for(i = 0; i < s_o_t.size(); i++){
         if(s_o_t.at(i) == 0){
@@ -57,46 +66,113 @@ void stiffness::init_KFS(elements& eles){
         }
 
         if(i == 0){
-            printf("WARNING: Not yet functional\n");
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
             exit(2);
         }
         else if(i == 1){
-            printf("WARNING: Not yet functional\n");
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
             exit(2);
         }
         else if(i == 2){
             PQL_ ele_empty;
             std::vector<PQL_>* eles_ref = eles.eleset_ptr(ele_empty);
+            double* Ke = new double[27 * 27]{0.};
 
             for(std::vector<PQL_>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KS(K_sparse, s_o_nt);
+                itele->get_K(Ke);
+                asb_spa_sym(Ke, nullptr, itele->node_id, s_o_nt);
             }
+            delete[] Ke; Ke = nullptr;
         }
         else if(i == 3){
             PQS_ ele_empty;
             std::vector<PQS_>* eles_ref = eles.eleset_ptr(ele_empty);
+            double* Ke = new double[24 * 24]{0.};
 
             for(std::vector<PQS_>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
-                itele->asb_KS(K_sparse, s_o_nt);
+                itele->get_K(Ke);
+                asb_spa_sym(Ke, nullptr, itele->node_id, s_o_nt);
             }
+
+            delete[] Ke; Ke = nullptr;
+        }
+        else if(i == 4){
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
+            exit(2);
         }
         else{
             printf("no such element type %i\n", i);
         }
     }
+};
 
+void stiffness::init_KFSN(elements& eles, std::vector<short> option){
+    if(!K_sparse.val){
+        this->init_K_symbolic(eles);
+        Fout = new double[K_sparse.rows]{0.};
+        Fint = new double[K_sparse.rows]{0.};
+    }
+    else{
+        for(int i = 0; i < K_sparse.row_st[K_sparse.rows] - 1; i++){
+            K_sparse.val[i] = 0.;
+        }
+        
+        for(int i = 0; i < K_sparse.rows; i++){
+            Fint[i] = 0.;
+            Fout[i] = 0.;
+        }
+    }  
+
+    const std::vector<std::pair<int,int>> s_o_nt = eles.sont();
+    const std::vector<int> s_o_t = eles.sot();
+    int i;
+    for(i = 0; i < s_o_t.size(); i++){
+        if(s_o_t.at(i) == 0){
+            continue;
+        }
+
+        if(i == 4){
+            PSL_ ele_empty;
+            std::vector<PSL_>* eles_ref = eles.eleset_ptr(ele_empty);
+            int eledof = eles_ref->front().nnum * 2;
+            DenseMatrix Ke(eledof, eledof);
+            double* Fe = new double[eledof]{0.};
+
+            for(std::vector<PSL_>::iterator itele = eles_ref->begin(); itele != eles_ref->end(); itele++){
+                itele->get_KF(Ke, Fe, option.front());
+                asb_spa_sym(Ke.val, Fe, itele->node_id, s_o_nt);
+            }
+
+            Ke.dealloc();
+            delete[] Fe; Fe = nullptr;
+        }
+        else if(i == 1){
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
+            exit(2);
+        }
+        else if(i == 2){
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
+            exit(2);
+        }
+        else if(i == 3){
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
+            exit(2);
+        }
+        else if(i == 0){
+            printf("\033[33mWARNING\033[0m: Not yet functional\n");
+            exit(2);            
+        }
+        else{
+            printf("no such element type %i\n", i);
+        }
+    }
 };
 
 void stiffness::init_K_symbolic(elements& eles){
     const std::vector<std::pair<int,int>> s_o_nt = eles.sont();
     const std::vector<int> s_o_t = eles.sot();
-    int ntype_num = s_o_nt.size();
-    std::vector<int> noet(ntype_num + 1, 1);
-    std::vector<int> dofoet(ntype_num + 1, 0);
-    for(int i = 0; i < ntype_num; i++){
-        noet.at(i + 1) = noet.at(i) + s_o_nt.at(i).first;
-        dofoet.at(i + 1) = dofoet.at(i) + s_o_nt.at(i).second * s_o_nt.at(i).first;
-    }
+    std::vector<int> noet, dofoet;
+    int ntype_num = decode_sont(s_o_nt, noet, dofoet);
     int pt_num = noet.back() - 1;
     int dof = dofoet.back();
 
@@ -105,11 +181,11 @@ void stiffness::init_K_symbolic(elements& eles){
     for(std::vector<int>::const_iterator itsot = s_o_t.begin(); itsot != s_o_t.end(); itsot++){
         if(*itsot){
             if(i == 0){
-                printf("WARNING: Not yet functional\n");
+                printf("\033[33mWARNING\033[0m: Not yet functional\n");
                 exit(2);
             }
             else if(i == 1){
-                printf("WARNING: Not yet functional\n");
+                printf("\033[33mWARNING\033[0m: Not yet functional\n");
                 exit(2);
             }
             else if(i == 2){
@@ -138,8 +214,21 @@ void stiffness::init_K_symbolic(elements& eles){
                     }
                 }
             }
+            else if(i == 4){
+                PSL_ empty_ele;
+                std::vector<PSL_>* PSL_eles = eles.eleset_ptr(empty_ele);
+
+                for(std::vector<PSL_>::iterator itele = PSL_eles->begin(); itele != PSL_eles->end(); itele++){
+                    for(j = 0; j < itele->nnum; j++){
+                        row = pt_num * (itele->node_id.at(j) - 1);
+                        for(k = 0; k < itele->nnum; k++){
+                            K_symbol[row + itele->node_id.at(k) - 1] = true;
+                        }
+                    }
+                }                
+            }
             else{
-                printf("ERROR: \n");
+                printf("\033[1;31mERROR\033[0m: \n");
             }
         }
         i++;
@@ -225,5 +314,80 @@ void stiffness::init_K_symbolic(elements& eles){
     }
 
     delete[] K_symbol; K_symbol = nullptr;
-    
+};
+
+void stiffness::asb_spa_sym(double* K, double* F, std::vector<int>& node_id,
+                            const std::vector<std::pair<int,int>>& sont){
+    std::vector<int> noet, dofoet;
+    int ntype_num = decode_sont(sont, noet, dofoet);
+
+    int i, j, row, col, ISD, JSD,
+        m ,n, where, posi, sgdof,
+        rows, cols, ISDpm, JSDpm;
+    int dim = node_id.size();
+
+    where = find(node_id.front(), noet);
+    sgdof = sont.at(where).second;
+    int dof = dim * sgdof;
+    if(K){
+        for(i = 0; i < dim; i++){
+            ISD = sgdof*i;
+            for(j = i; j < dim; j++){
+                JSD = sgdof*j;
+                if(node_id.at(i) < node_id.at(j)){
+                    row = node_id.at(i);
+                    col = node_id.at(j);
+                    rows = dofoet.at(where) + sgdof * (row - noet.at(where));
+                    cols = dofoet.at(where) + sgdof * (col - noet.at(where));
+
+                    for(m = 0; m < sgdof; m++){
+                        posi = match(rows + m + 1, cols + 1, K_sparse);
+                        ISDpm = ISD + m;
+                        for(n = 0; n < sgdof; n++){
+                            K_sparse.val[posi + n] += K[ISDpm*dof + JSD + n];
+                        }
+                    }
+                }
+                else if(node_id.at(i) > node_id.at(j)){
+                    row = node_id.at(j);
+                    col = node_id.at(i);
+                    rows = dofoet.at(where) + sgdof * (row - noet.at(where));
+                    cols = dofoet.at(where) + sgdof * (col - noet.at(where));
+
+                    for(m = 0; m < sgdof; m++){
+                        JSDpm = JSD + m;
+                        posi = match(rows + m + 1, cols + 1, K_sparse);
+                        for(n = 0; n < sgdof; n++){
+                            K_sparse.val[posi + n] += K[(ISD + n)*dof + JSDpm];
+                        }
+                    }
+                }
+                else{
+                    row = node_id.at(i);
+                    rows = dofoet.at(where) + sgdof * (row - noet.at(where));
+
+                    for(m = 0; m < sgdof; m++){
+                        ISDpm = ISD + m;
+                        posi = match(rows + m + 1, rows + m + 1, K_sparse);
+                        for(n = m; n < sgdof; n++){
+                            K_sparse.val[posi + n - m] += K[ISDpm*dof + ISD + n];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if(F){
+        if(!Fint) printf("\033[1;31mERROR\033[0m: Fint haven't initialized!\n");
+        for(i = 0; i < dim; i++){
+            ISD = sgdof * i;
+            row = node_id.at(i);
+            rows = dofoet.at(where) + sgdof * (row - noet.at(where));
+
+            for(j = 0; j < sgdof; j++){
+                Fint[rows + j] += F[ISD + j];
+            }
+        }
+    }
 };

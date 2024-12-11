@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <vector>
+#include <string>
+#include <fstream>
+#include <mkl.h>
 
 class SparseMatrix{
 public:
@@ -19,6 +22,8 @@ public:
         row_st = nullptr;
     }
 
+    SparseMatrix(SparseMatrix& A);
+
     void del(){
         delete[] val; val = nullptr;
         delete[] col; col = nullptr;
@@ -27,7 +32,17 @@ public:
 
     /// @brief show this SparseMatrix
     /// @param row total rows of this matrix
-    void show(int row);
+    /// @param is_w wheather write matrix in files ./mat.txt or ./${file_name}.txt
+    void show(bool is_w = false, std::string file_name = "mat");
+
+    /// @brief compute y = (this).x
+    void product(const double* x, double* y);
+
+    /// @brief A = A - B 
+    void sub(SparseMatrix& B);
+
+    /// @brief A = alpha * A 
+    void mul(double alpha);
 
     ~SparseMatrix(){
         if(!(val == nullptr && col == nullptr && row_st == nullptr)){
@@ -60,14 +75,22 @@ public:
 
     void resize(int rows, int cols);
 
+    void set_zero();
+
     void dealloc();
 
     void alloc();
 
     void show();
 
+    void product(const CBLAS_TRANSPOSE tra, const DenseMatrix& B, const CBLAS_TRANSPOSE trb, DenseMatrix& C, double alpha = 1.0);
+
+    void add(const DenseMatrix& B);
+
+    void mul(double alpha);
+
     ~DenseMatrix(){
-        if(val != nullptr){
+        if(val){
             delete[] val; val = nullptr;
         }
     };
@@ -96,7 +119,7 @@ public:
 /// @param ptA point A
 /// @param ptB point B
 /// @return length (|AB|)
-double getlen(double* ptA, double* ptB);
+double getlen(double* ptA, double* ptB, int dim);
 
 /// @brief Determine which category the node belongs to
 /// @param n_id Node number
@@ -123,5 +146,8 @@ double det(const DenseMatrix &M);
 /// @attention the row/col number and SparseMatrix is one-based indexing;
 /// @return the position where this element stored in SparseMatrix.val Array.
 int match(const int row, const int col,  SparseMatrix &SPM);
+
+int decode_sont(const std::vector<std::pair<int, int>> &sont, std::vector<int>& noet,
+                 std::vector<int>& dofet);
 
 #endif

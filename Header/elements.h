@@ -4,10 +4,7 @@
 #include <vector>
 #include <string.h>
 #include <stdio.h>
-#include "beam_TMSK2.h"
-#include "beam_TMSK3.h"
-#include "PQL_.h"
-#include "PQS_.h"
+#include "../Element_lib/All_element.h"
 
 class elements{
 private:
@@ -17,24 +14,29 @@ private:
     std::vector<B3TS> B3TS_eles;
     std::vector<PQL_> PQL__eles;
     std::vector<PQS_> PQS__eles;
+    std::vector<PSL_> PSL__eles;
 
 public:
     elements(std::vector<std::pair<std::string, int>> eles_num){
-        size_of_eletype.resize(4, 0);
+        size_of_eletype.resize(5, 0);
         for(std::vector<std::pair<std::string, int>>::iterator iten = eles_num.begin(); iten != eles_num.end(); iten++){
             size_of_eletype.at(match_type(iten->first)) = iten->second;
         }
         alloc();
     };
 
-    elements(const std::vector<int> &sot = {0,0,0,0}){
-        int size = sot.size();
+    elements(const std::vector<int> &sot = {}){
+        size_of_eletype.resize(5,0);
 
-        if(size != 4){
-            printf("error size %i of input vector!(required 4)", size);
+        int size = sot.size(), i;
+        bool changed = false;
+
+        if(size > 5){
+            printf("Warning: input vetor size %i is greater than expected!(only req-\nuired 5)\n", size);
         }
-        else{
-            size_of_eletype = sot;
+
+        for(i = 0; i < size; i++){
+            size_of_eletype.at(i) = sot.at(i);
         }
         alloc();
     }
@@ -58,6 +60,7 @@ public:
     std::vector<B3TS>* eleset_ptr(B3TS &std_ele);
     std::vector<PQL_>* eleset_ptr(PQL_ &std_ele);
     std::vector<PQS_>* eleset_ptr(PQS_ &std_ele);
+    std::vector<PSL_>* eleset_ptr(PSL_ &std_ele);
 
     /// @brief return an access to size_of_eletype vector(read only)
     /// @return const reference of size_of_eletype vector

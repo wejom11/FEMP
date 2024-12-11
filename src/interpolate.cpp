@@ -15,6 +15,19 @@ void Gauss_int::getGP_1(double* GP_1, double* weight_1){
         weight_1[0] = 5.0/9.0; weight_1[1] = 8.0/9.0;
         weight_1[2] = 5.0/9.0;
     }
+    else if(order == 4){
+        GP_1[0] = -0.861136311594053; GP_1[1] = -0.339981043584856;
+        GP_1[2] = -GP_1[1]; GP_1[3] = -GP_1[0];
+        weight_1[0] = 0.347854845137454; weight_1[1] = 0.652145154862546;
+        weight_1[2] = weight_1[1]; weight_1[3] = weight_1[0];
+    }
+    else if(order == 5){
+        GP_1[0] = -0.906179845938664; GP_1[1] = -0.538469310105683;
+        GP_1[3] = -GP_1[1]; GP_1[4] = -GP_1[0]; GP_1[2] = 0.;
+        weight_1[0] = 0.236926885056189; weight_1[1] = 0.478628670499366;
+        weight_1[3] = weight_1[1]; weight_1[4] = weight_1[0];
+        weight_1[2] = 0.568888888888889;
+    }
     else{
         printf("integration order %i is not supported!\n", order);
     }
@@ -85,6 +98,7 @@ void Lagrange_intp::set_integration(int int_od, std::vector<int> sd){
 void Lagrange_intp::getN__(){
     if(dim == 2){
         if(order == 2){
+            if(Ni) delete[] Ni; Ni = nullptr;
             Ni = new double[gintp.int_pt_num * 9];
             int i, j, k, row;
             int nc[18] = {0,0,2,0,2,2,0,2,1,0,2,1,1,2,0,1,1,1};
@@ -97,6 +111,22 @@ void Lagrange_intp::getN__(){
                 double l2xi[3] = {(xi2 - xi)/2, 1-xi2, (xi2 + xi)/2};
                 double l2eta[3] = {(eta2 - eta)/2, 1-eta2, (eta2 + eta)/2};
                 for(j = 0; j < 9; j++){
+                    Ni[row + j] = l2xi[nc[2*j]] * l2eta[nc[2*j+1]];
+                }
+            }
+        }
+        else if(order == 1){
+            if(Ni) delete[] Ni; Ni = nullptr;
+            Ni = new double[gintp.int_pt_num * 4];
+            int i, j, k, row;
+            int nc[8] = {0,0,1,0,1,1,0,1};
+            for(i = 0; i < gintp.int_pt_num; i++){
+                row = i * 4;
+                double xi = gintp.int_pt_coord[2*i];
+                double eta = gintp.int_pt_coord[2*i + 1];
+                double l2xi[2] = {(1 - xi)/2, (1 + xi)/2};
+                double l2eta[2] = {(1 - eta)/2, (1 + eta)/2};
+                for(j = 0; j < 4; j++){
                     Ni[row + j] = l2xi[nc[2*j]] * l2eta[nc[2*j+1]];
                 }
             }
@@ -124,6 +154,23 @@ void Lagrange_intp::getNdl__(double* Ndl){
                     Ndl[row + 2*j + 1] = l2xi[nc[2*j]] * l2etadeta[nc[2*j+1]];
                 }
             }
+        }
+        else if(order == 1){
+            int i, j, k, row, J3;
+            int nc[8] = {0,0,1,0,1,1,0,1};
+            for(i = 0; i < gintp.int_pt_num; i++){
+                row = i * 8;
+                double xi = gintp.int_pt_coord[2*i];
+                double eta = gintp.int_pt_coord[2*i + 1];
+                double l2xi[2] = {(1 - xi)/2, (1 + xi)/2};
+                double l2eta[2] = {(1 - eta)/2, (1 + eta)/2};
+                double l2xidxi[2] = {-0.5, 0.5};
+                double l2etadeta[2] = {-0.5, 0.5};
+                for(j = 0; j < 4; j++){
+                    Ndl[row + 2*j] = l2xidxi[nc[2*j]] * l2eta[nc[2*j+1]];
+                    Ndl[row + 2*j + 1] = l2xi[nc[2*j]] * l2etadeta[nc[2*j+1]];
+                }
+            }   
         }
     }
 };
@@ -158,7 +205,7 @@ void Lagrange_intp::getNdx__(std::vector<double*> xyz_c){
 
         info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, Jaco.rows, Jaco.cols, Jaco.val, Jaco.cols, ipiv);
         if(info != 0){
-            printf("ERROR: calculating Ndx failed!\n");
+            printf("\033[1;31mERROR\033[0m: calculating Ndx failed!\n");
             exit(1);
         }
 
@@ -166,7 +213,7 @@ void Lagrange_intp::getNdx__(std::vector<double*> xyz_c){
             info = LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', Jaco.rows, 1, Jaco.val, Jaco.cols, ipiv, &Ndx[row + dim*j], 1);
 
             if(info != 0){
-                printf("ERROR: calculating Ndx failed!\n");
+                printf("\033[1;31mERROR\033[0m: calculating Ndx failed!\n");
                 exit(info);
             }
         }
@@ -185,6 +232,7 @@ void Lagrange_intp::del(){
     if(Ndx){
         delete[] Ndx; Ndx = nullptr;
     }
+    gintp.del();
 };
 
 void Serendipity_intp::set_integration(int int_od, std::vector<int> sd){
@@ -298,7 +346,7 @@ void Serendipity_intp::getNdx__(std::vector<double*> xyz_c){
 
         info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, Jaco.rows, Jaco.cols, Jaco.val, Jaco.cols, ipiv);
         if(info != 0){
-            printf("ERROR: calculating Ndx failed!\n");
+            printf("\033[1;31mERROR\033[0m: calculating Ndx failed!\n");
             exit(1);
         }
 
@@ -306,7 +354,7 @@ void Serendipity_intp::getNdx__(std::vector<double*> xyz_c){
             info = LAPACKE_dgetrs(LAPACK_ROW_MAJOR, 'N', Jaco.rows, 1, Jaco.val, Jaco.cols, ipiv, &Ndx[row + dim*j], 1);
 
             if(info != 0){
-                printf("ERROR: calculating Ndx failed!\n");
+                printf("\033[1;31mERROR\033[0m: calculating Ndx failed!\n");
                 exit(info);
             }
         }

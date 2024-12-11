@@ -9,7 +9,7 @@ public:
     double G;       // sheer modulus
     double nu;      // Poission ratio
 
-    material(double Ev = 2.1E7, double nuv = 0.30){
+    material(double Ev = 2.1E5, double nuv = 0.30){
         E = Ev;
         nu = nuv;
         G = E / (1 + nu) / 2;

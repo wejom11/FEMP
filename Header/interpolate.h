@@ -4,7 +4,6 @@
 #include <vector>
 #include <math.h>
 #include <stdio.h>
-#include <mkl.h>
 #include "solver.h"
 
 class Gauss_int{
